@@ -1,0 +1,267 @@
+
+<html>
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no">
+<style>
+* {
+  font-family: Calibri;
+  font-size:18;
+}
+th, td {
+  border-bottom: 1px solid #ddd;
+  padding: 5px;
+}
+.item {
+  font-family:Calibri;
+  font-weight:bold;
+  background-color : lightblue;
+  display: inline-block;
+  position:float;
+  margin: 5px;
+  padding: 5px;
+  border-radius:1px;
+  cursor:pointer;
+}
+.entry{
+  font-weight:bold;
+  position:absolute;
+  background-color : #eeeeee;
+  padding: 2px;
+  border-radius:1px;
+  z-index: 10;
+}
+.entryhide{
+  display:None;
+}
+*input{
+  border:none;
+}
+.numInput{
+  width:60px;
+  border:1px solid #eee;
+}
+.suggest{
+  font-weight:normal;
+  background-color: #dddddd;
+  margin:5px;
+}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+<script>
+// tr:nth-child(even) {background-color: #f2f2f2;}
+var total = 0;
+var id = "{{id}}";
+var hostid = "{{hostid}}/"; //"https://makechaos.pythonanywhere.com/";
+var rowImages = {{rowImages}};
+var curRowImage = -1;
+var entTypeIsUnits = false; // false: Rs/amt, true: Kg/Units
+function changeEntType() {
+  entTypeIsUnits = !entTypeIsUnits;
+  if(entTypeIsUnits) {
+      document.getElementById("entType").innerHTML = "Units";
+  } else {
+      document.getElementById("entType").innerHTML = "Rs/Unit";
+  }
+}
+function getItemsAsText(){
+  var itemText = '';
+  var els = document.getElementsByClassName("gitem");
+  if(els.length==0) return '';
+  itemText += '{store:'+document.getElementById('storename').value+'}';
+  itemText += '{date:'+document.getElementById('entdate').value+'}';
+  for(var m=0; m<els.length; m++) {
+    var el = els[m];
+    itemText += '{';
+    itemText += el.childNodes[0].innerHTML; // name
+    var rpu = el.childNodes[1].childNodes[0].value;
+    var amt = el.childNodes[2].childNodes[0].value;
+    if (entTypeIsUnits) rpu = amt/rpu; // treat rpu as units
+    itemText += ','+ rpu; // rs/unit
+    itemText += ','+ amt; // amt
+    itemText += '}';
+  }
+  return( itemText );
+}
+function httpGET(url) {
+  var xmlHttp = null;
+  xmlHttp = new XMLHttpRequest();
+  xmlHttp.open("GET", url, false);
+  xmlHttp.send(null);
+  return xmlHttp.responseText;
+}
+function submitList() {
+  //alert(getItemsAsText());
+  window.location.href = hostid + 'addlist='+id+','+getItemsAsText();
+}
+function updateTotal(amt) {
+  total += amt;
+  document.getElementById("total").innerHTML = ""+total;
+}
+function deleteItem(nam){
+  var el = document.getElementById(nam);
+  var amt= parseFloat(el.childNodes[2].childNodes[0].value);
+  updateTotal(-amt);
+  var pel = el.parentNode;
+  pel.removeChild(el);
+}
+function itemHtmlText(name,rs,units){
+  var txt = '<tr class="gitem" id="'+name+'">';
+  txt += '<td>'+name+'</td>';
+  txt += '<td>' + '<input type="number" class="numInput" value="'+rs+'"></td>';
+  txt += '<td>' + '<input type="number" class="numInput" value="'+units+'"></td>';
+  txt += '<td style="color:red;font-weight:bold;font-size:24;" onclick=deleteItem("'+name+'")>-</td>';
+  txt += '</tr>';
+  return txt;
+}
+function addItem(){
+  document.getElementById("entName").value = "";
+  document.getElementById("entRs").value = "";
+  document.getElementById("entAmt").value = "";
+  for(var n=0;n<3;n++)
+    document.getElementById("sug"+n).innerHTML = "";
+
+  document.getElementById("itementry").setAttribute("class","entry");
+}
+
+function hideEntry(){
+    document.getElementById("suggest").setAttribute("class","entryhide");
+}
+function procEntry(){
+  hideEntry();
+  var name = document.getElementById("entName").value;
+  var rs = parseFloat(document.getElementById("entRs").value);
+  var amt = parseFloat(document.getElementById("entAmt").value);
+  if(name!=null && name!="") {
+   var els = document.getElementById(name);
+   var itemText = itemHtmlText(name,rs,amt);
+   var pamt = 0;
+   if(els==null) {
+    document.getElementById('itemlist').innerHTML += itemText;
+   }
+   else {
+    els.innerHTML = itemText;
+    pamt= parseFloat(els.childNodes[2].childNodes[0].value);
+   }
+   updateTotal(amt-pamt);
+  }
+}
+function preLoadItems() {
+  var dt = new Date();
+  var mon = dt.getMonth() + 1;
+  var dat = dt.getDate();
+  if(dat<10) dat = '0'+dat;
+  if(mon<10) mon = '0'+mon;
+  document.getElementById("entdate").value = ''+dt.getFullYear()+'-'+mon+'-'+dat;
+  nextRowImage();
+  return;
+  var items = [['carrot',12,1], ['beans',43,1]];
+  var els = document.getElementById('itemlist');
+  for(var n=0; n<items.length; n++) {
+    els.innerHTML += itemHtmlText(items[n][0], items[n][1], items[n][2]);
+  }
+
+}
+
+var pastItems = [{{pastItems}}];
+//["coconut", "chow chow", "apple", "ginger", "lady finger", "peapods", "carrot", "sweet corn", "raddish", "lemon", "cauliflower", "methi", "yelaki", "palak", "banana", "raw banana", "coriander", "baby potato", "mushroom", "pomegranate", "peas", "brinjal", "grapes", "drumstick", "cabbage", "ridge gourd", "broccoli", "tomato", "beets", "onion", "potato", "capsicum", "chilly", "ladysfinger", "beans"];
+
+function getSuggest(){
+  document.getElementById("suggest").setAttribute("class","entry");
+  var rnam = document.getElementById("entName").value;
+  rnam = rnam.toLowerCase();
+  var csc = [];
+  var N = pastItems.length;
+  for(var n=0; n<N; n++) {
+    var nam = pastItems[n];
+    var wsc = nam.indexOf(rnam);
+    if(wsc>=0) csc.push([wsc,nam]);
+  }
+  var sugg = rnam;
+  if(csc.length>1) {
+    csc.sort(function(a,b){return a[0]-b[0]});
+  }
+  N = csc.length;
+  if(N>3) N = 3;
+  for(var n=0; n<N; n++) {
+    document.getElementById("sug"+n).innerHTML = csc[n][1];
+  }
+  for(var n=N; n<3; n++) {
+    document.getElementById("sug"+n).innerHTML = "";
+  }
+}
+function acceptSug(nn){
+  document.getElementById("entName").value = document.getElementById("sug"+nn).innerHTML;
+  hideEntry();
+}
+function setUID(){
+    id = document.getElementById("id").value;
+}
+function nextRowImage(){
+  if(curRowImage<(rowImages.length-1)) {
+      curRowImage = curRowImage + 1;
+      document.getElementById("rowimage").src = rowImages[curRowImage];
+      document.getElementById("imid").innerHTML = ''+(curRowImage+1)+'/'+rowImages.length;
+  }
+}
+function prevRowImage(){
+  if(curRowImage>0) {
+      curRowImage = curRowImage - 1;
+      document.getElementById("rowimage").src = rowImages[curRowImage];
+      document.getElementById("imid").innerHTML = ''+(curRowImage+1)+'/'+rowImages.length;
+  }
+}
+</script>
+</head>
+<body onload="preLoadItems()">
+<!-- <table id="itementry" class="entry">
+<tr><td>Name</td><td><input id="entname" style="width:150px"></input></td></tr>
+<tr><td>Rs/Unit</td><td><input id="entrsunit" type="number" style="width:50px"></input></td></tr>
+<tr><td>Rs</td><td><input id="entrs" type="number" style="width:50px"></input></td></tr>
+<tr><td><button align="center" onclick="processEntry()">Add</button></td></tr>
+</table>
+!-->
+<!--
+<div class="item" onclick="addItem()">+ Add Item</div>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+!-->
+<div class="item" style="background:lightgreen;" onclick="submitList()">Submit</div>
+&nbsp&nbsp&nbsp&nbsp
+<a href="{{hostid}}/stats={{id}}" style="background-color:#eebbbb;padding:5px;color:black;font-weight:bold;">Stats.</a>
+ &nbsp&nbsp&nbsp&nbsp
+<a href="{{hostid}}/due={{id}}" style="background-color:#bbbbee;padding:5px;color:black;font-weight:bold;">Due</a>
+</br><hr>
+<table style="font-family:calibri;align:center;border:1px;">
+<tr><td>Store :</td><td><input style="width:160px;border:1px solid #eee;"id="storename"></input></td></tr>
+<tr><td>Date  :</td><td><input type="date" style="width:160px;border:1px solid #eee;" id="entdate"></input></td>
+<td><input type="checkbox" onclick="changeEntType()">units</input></td></tr>
+</table>
+
+<div style="font-size:10;">{{info}}</div>
+<div id="imid" style="font-size:12;"></div>
+<div style="width:330px;height:40px;">
+<div style="z-index:2;position:absolute;background-color:#555555;width:160px;height:40px;opacity:0.0;" onclick="prevRowImage()"></div>
+<img style="z-index:1;width:330px;position:absolute;height:40px;" id="rowimage" src="">
+<div style="z-index:2;position:absolute;background-color:#555555;width:160px;height:40px;margin-left:220px;opacity:0.0;" onclick="nextRowImage()"></div>
+</div>
+
+<table id="itemlist" style="font-family:calibri;align:center;border:1px;">
+<tr><th>Name</th><th id="entType">Rs/Unit</th><th>Amt.</th><th><div id="total" style="font-weight:normal;"></div></th></tr>
+<tr><td><input style="margin:0px;width:100px;" id="entName" oninput="getSuggest()"></input>
+<div id="suggest" class="entryhide">
+<div class="suggest" id="sug0" onclick="acceptSug(0)"></div>
+<div class="suggest" id="sug1" onclick="acceptSug(1)"></div>
+<div class="suggest" id="sug2" onclick="acceptSug(2)"></div>
+</div>
+</td>
+<td><input type="number" style="margin:0px;width:60px;" id="entRs" oninput="hideEntry()"></input></td>
+<td><input type="number" style="margin:0px;width:60px;" id="entAmt" oninput="hideEntry()"></input></td>
+<td><button style="margin:5px;" onclick="procEntry()">Add</button></td>
+</tr>
+
+<!--<table id="itemlist" style="font-family:calibri;align:center;border:1px;">
+
+<tr><th>Name</th><th>Rs/unit</th><th>Amt.</th></tr>
+!-->
+</table>
+</body>
+</html>

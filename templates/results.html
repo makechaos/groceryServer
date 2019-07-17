@@ -1,0 +1,138 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no">
+<style>
+* {
+  font-family: Calibri;
+  font-size:18;
+}
+th, td {
+  border-bottom: 1px solid #ddd;
+  padding: 5px;
+}
+button {
+  font-size:14;
+}
+.barBox {
+  border:1px solid #0000aa;
+  float:left;
+  position:absolute;
+  display:block;
+  width:10px;
+  background-color:#9999ff;
+  height:10px;
+  opacity:1.0;
+  color:black;
+}
+.barPlot{
+  margin:5px;
+  width:100px;
+  background-color:white;
+  height:10px;
+}
+</style>
+<script>
+function bar(elid,inp,len){
+  var el=document.getElementById(elid);
+  var vals = [];
+  for(var m=0; m<inp.length; m++)
+    vals.push(parseFloat(inp[m]));
+  var v1=Math.min(...vals);
+  var v2=Math.max(...vals);
+  var sc=1.0/(v2-v1);
+
+  var ppel = el.parentElement.parentElement;
+  ppel.childNodes[1].innerHTML = ""+v1;
+  ppel.childNodes[3].innerHTML = ""+v2;
+
+  while(el.childNodes.length>0) {
+      el.removeChild(el.childNodes[0]);
+  }
+  for(var m=0;m<vals.length;m++){
+    var node=document.createElement('div');
+    node.setAttribute('class','barBox');
+    node.setAttribute('style','margin-left:'+Math.floor((vals[m]-v1)*sc*len)+'px;z-index:'+(m+2));
+    el.appendChild(node);
+  }
+}
+var prevEl = null;
+function getValue(el) {
+  if(prevEl!=null) prevEl.innerHTML = "";
+  el.innerHTML = el.getAttribute("value");
+  prevEl = el;
+}
+function verticalBar(elid,inp,maxN,height,len){
+  var el=document.getElementById(elid);
+  var vals = [];
+  for(var m=0; m<maxN;m++) {
+    var n = (inp.length-1) - m;
+    if(n<0) break
+    vals.push(parseFloat(inp[n]));
+  }
+  var wSpace = 3;
+  var barW = Math.floor((len-(maxN-1)*wSpace)/maxN);
+  var v1=Math.min(...vals);
+  var v2=Math.max(...vals);
+
+  var ppel = el.parentElement.parentElement;
+  ppel.childNodes[1].innerHTML = ""+v1;
+  ppel.childNodes[3].innerHTML = ""+v2;
+
+  var sc=1.0/(v2-v1);
+  var minH = 7;
+
+  while(el.childNodes.length>0) {
+      el.removeChild(el.childNodes[0]);
+  }
+  for(var m=0; m<vals.length; m++){
+    var node=document.createElement('div');
+    node.setAttribute('class','barBox');
+    var barH = Math.floor( (vals[m]-v1)*sc * height + minH );
+    var nBar = vals.length-1 - m;
+    node.setAttribute('style','font-size:10px;margin-top:'+(height-barH)+'px;margin-left:'+(nBar*(barW+wSpace))+'px;width:'+barW+'px;height:'+barH+'px;z-index:'+(m+2)+';');
+    node.setAttribute('value',vals[m]);
+    node.setAttribute('onclick',"getValue(this)");
+    el.appendChild(node);
+  }
+}
+function loadAllBar(){
+  var els = document.getElementsByClassName('barPlot');
+  for(var m=0;m<els.length;m++) {
+    var id = els[m].getAttribute('id');
+    var vals = els[m].getAttribute('barValues');
+    bar(id,vals.split(','),100);
+    //verticalBar(id,vals.split(','),5,20,100);
+  }
+
+  var bel = document.getElementById("toggle");
+  bel.innerHTML = "Show Last 5 Prices";
+  bel.setAttribute("onclick", "loadLast5()");
+}
+
+function loadLast5(){
+  var els = document.getElementsByClassName('barPlot');
+  for(var m=0;m<els.length;m++) {
+    var id = els[m].getAttribute('id');
+    var vals = els[m].getAttribute('barValues');
+    verticalBar(id,vals.split(','),5,15,100);
+  }
+
+  var bel = document.getElementById("toggle");
+  bel.innerHTML = "Show All Prices";
+  bel.setAttribute("onclick", "loadAllBar()");
+}
+function firstLoad() {
+    var el = document.getElementById("toogleButton");
+    if(el!=null) el.innerHTML = "<button id=\"toggle\" onlcick=\"loadLast5()\">Show Last 5 Prices</button>";
+    loadLast5();
+}
+</script>
+</head>
+<body align="center" onload="firstLoad()">
+<h2>{{result}}</h2>
+<a href="{{hostid}}/id={{id}}">HOME</a>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+<a href="{{hostid}}/all={{id}}">All-Entries</a>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+<a href="{{hostid}}/graph={{id}},">Graph</a></br><hr>
+{{fname}}
+</body>
+</html>

@@ -1,0 +1,20 @@
+
+<html>
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no">
+<script>
+// tr:nth-child(even) {background-color: #f2f2f2;}
+var id = "";
+var hostid = "{{hostid}}/"; //"http://makechaos.pythonanywhere.com/";
+function submit(){
+    window.location.href = hostid+"id="+document.getElementById("id").value;
+}
+</script>
+</head>
+<body>
+<div style="margin:5px;width:100%;align:center;" align="center">
+User ID &nbsp&nbsp : &nbsp&nbsp <input style="width:60px;" id="id"></input></div>
+<div style="margin:10px;width:100%;align:center;" align="center">
+<button onclick="submit()" style="padding:5px;">Login</button> </div>
+</body>
+</html>

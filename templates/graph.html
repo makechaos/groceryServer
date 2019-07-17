@@ -1,0 +1,121 @@
+<html>
+
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no">
+<style>
+div.charts{
+  width:90%;
+  height:50%;
+  display:block;
+  float:left;
+}
+</style>
+<script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+<script>
+var hostid = "{{hostid}}";
+var charts={'items-chart':0};
+function newChartSeries(res){
+  var series = [];
+  for(var m=0;m<res.length;m++) {
+    var ser = {
+          type: res[m]['type'],
+          name: res[m]['name'],
+          legendText: res[m]['legendText'],
+          showInLegend: true,
+          lineThickness: 1,
+          toolTipContent: "{name}: {x}, {y}",
+          dataPoints: []
+        };
+    for(var n=0; n<res[m]['data'].length; n++) {
+        var dt = new Date(res[m]['data'][n]['x']);
+        //ser.dataPoints.push({x: new Date(res[m]['data'][n]['x']), y:res[m]['data'][n]['y']});
+        ser.dataPoints.push({x:dt, y:res[m]['data'][n]['y']});
+      }
+    series.push(ser);
+  }
+  return series;
+}
+function createChart(name, res){
+  charts[name] = new CanvasJS.Chart(name, {
+    animationEnabled: false,
+    zoomEnabled: true,
+    zoomType: "xy",
+    toolTip: { shared: false},
+    legend: {
+        cursor: "pointer",
+        itemclick: toogleDataSeries
+    },
+    axisX:{
+      gridColor: "lightblue" ,
+      valueFormatString: "MMM-YY", // date format as month only
+      gridThickness: 1
+    },
+    axisY:{
+      gridColor: "lightblue",
+      valueFormatString: "0.0#"
+    },
+    data: newChartSeries(res)
+  });
+  charts[name].render();
+}
+function toogleDataSeries(e){
+	if (typeof(e.dataSeries.visible) === "undefined" || e.dataSeries.visible) {
+		e.dataSeries.visible = false;
+	} else{
+		e.dataSeries.visible = true;
+	}
+	charts['items-chart'].render();
+}
+function selected() {
+  var item = document.getElementById("item").value;
+  var meas = document.getElementById("meas").value;
+  $.getJSON(hostid+'/graph={{uid}},'+item+','+meas,function(res){
+      createChart('items-chart', res)
+    }
+  );
+}
+function selectFirst() {
+  document.getElementById("item").options[1].selected = true;
+  selected();
+}
+function dummy() {
+  var dummy = [{
+    name: 'dummy',
+    type: 'line',
+    legendText : 'dummy',
+    data: [
+      { x: new Date(2000,0), y: 0.65 },
+      { x: new Date(2000,1), y: -0.8 },
+      { x: new Date(2000,2), y: -0.9 },
+      { x: new Date(2000,3), y: -0.25 },
+      { x: new Date(2000,4), y: -0.01 },
+      { x: new Date(2000,5), y: -0.27 },
+      { x: new Date(2000,6), y: 0.24 },
+      { x: new Date(2000,7), y: 0.06 },
+      { x: new Date(2000,8), y: 1.37 },
+      { x: new Date(2000,9), y: -1.35 },
+      { x: new Date(2000,10), y: -0.72 }
+    ]
+  }];
+  createChart('items-chart',dummy);
+}
+</script>
+</head>
+<body onload="selectFirst()">
+<select id="item" onchange="selected()" style="position:relative;margin-left:50px;font-size:20px;">
+{{items}}
+</select>
+
+<select id="meas" onchange="selected()" style="position:relative;margin-left:50px;font-size:20px;">
+<option value="rs">Rs.</option>
+<option value="amt">Total</option>
+<option value="quant">Quantity</option>
+</select>
+<br>
+<hr>
+<div id="items-chart" class="charts"></div>
+
+</body>
+</html>
